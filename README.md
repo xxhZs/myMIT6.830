@@ -1,15 +1,6 @@
-simple-db
+我的mit6.830
 =========
 
-Code for all 6.830 labs will be available in this repo. Once you have set up your class repo, you pull lab code from here.
-
-Directions for Repo Setup
--------------------------
-
-Directions can be [here](https://github.com/MIT-DB-Class/course-info-2018)
-
-Lab Submission
------
-
-Instructions for labs (including how to submit answers) are [here](https://github.com/MIT-DB-Class/course-info-2018)
+加油学习，开始时间 2021 8 12 
+lab1 2021 8 14
 
