@@ -17,6 +17,43 @@ import java.util.concurrent.ConcurrentHashMap;
  * @Threadsafe
  */
 public class Catalog {
+    class Table{
+        private DbFile dbFile;
+        private String name;
+        private String pkeyField;
+        public Table(DbFile dbFile, String name , String pkeyField){
+            this.dbFile = dbFile;
+            this.name = name;
+            this.pkeyField = pkeyField;
+        }
+
+        public DbFile getDbFile() {
+            return dbFile;
+        }
+
+        public void setDbFile(DbFile dbFile) {
+            this.dbFile = dbFile;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getPkeyField() {
+            return pkeyField;
+        }
+
+        public void setPkeyField(String pkeyField) {
+            this.pkeyField = pkeyField;
+        }
+    }
+
+    private Map<String , Table> mapByName;
+    private Map<Integer , Table> mapById;
 
     /**
      * Constructor.
@@ -24,6 +61,8 @@ public class Catalog {
      */
     public Catalog() {
         // some code goes here
+        mapByName = new HashMap<>();
+        mapById = new HashMap<>();
     }
 
     /**
@@ -36,6 +75,9 @@ public class Catalog {
      * @param pkeyField the name of the primary key field
      */
     public void addTable(DbFile file, String name, String pkeyField) {
+        Table table = new Table(file,name,pkeyField);
+        mapByName.put(name,table);
+        mapById.put(file.getId(),table);
         // some code goes here
     }
 
@@ -60,7 +102,11 @@ public class Catalog {
      */
     public int getTableId(String name) throws NoSuchElementException {
         // some code goes here
-        return 0;
+        if(mapByName.containsKey(name)){
+            return mapByName.get(name).getDbFile().getId();
+        }else{
+            throw new NoSuchElementException();
+        }
     }
 
     /**
@@ -70,8 +116,13 @@ public class Catalog {
      * @throws NoSuchElementException if the table doesn't exist
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
+        if(mapById.containsKey(tableid)){
+            return mapById.get(tableid).getDbFile().getTupleDesc();
+        }else{
+            throw new NoSuchElementException();
+        }
         // some code goes here
-        return null;
+        //return null;
     }
 
     /**
@@ -81,30 +132,41 @@ public class Catalog {
      *     function passed to addTable
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
+        if(mapById.containsKey(tableid)){
+            return mapById.get(tableid).getDbFile();
+        }else{
+            throw new NoSuchElementException();
+        }
         // some code goes here
-        return null;
     }
 
     public String getPrimaryKey(int tableid) {
+        if(mapById.containsKey(tableid)){
+            return mapById.get(tableid).pkeyField;
+        }else{
+            throw new NoSuchElementException();
+        }
         // some code goes here
-        return null;
     }
 
     public Iterator<Integer> tableIdIterator() {
         // some code goes here
-        return null;
+        return mapById.keySet().iterator();
     }
 
     public String getTableName(int id) {
+        return mapById.get(id).name;
         // some code goes here
-        return null;
+
     }
-    
+
     /** Delete all tables from the catalog */
     public void clear() {
         // some code goes here
+        mapById.clear();
+        mapByName.clear();
     }
-    
+
     /**
      * Reads the schema from a file and creates the appropriate tables in the database.
      * @param catalogFile
@@ -113,23 +175,23 @@ public class Catalog {
         String line = "";
         String baseFolder=new File(new File(catalogFile).getAbsolutePath()).getParent();
         try {
-            BufferedReader br = new BufferedReader(new FileReader(new File(catalogFile)));
-            
+            BufferedReader br = new BufferedReader(new FileReader(catalogFile));
+
             while ((line = br.readLine()) != null) {
                 //assume line is of the format name (field type, field type, ...)
                 String name = line.substring(0, line.indexOf("(")).trim();
                 //System.out.println("TABLE NAME: " + name);
                 String fields = line.substring(line.indexOf("(") + 1, line.indexOf(")")).trim();
                 String[] els = fields.split(",");
-                ArrayList<String> names = new ArrayList<String>();
-                ArrayList<Type> types = new ArrayList<Type>();
+                ArrayList<String> names = new ArrayList<>();
+                ArrayList<Type> types = new ArrayList<>();
                 String primaryKey = "";
                 for (String e : els) {
                     String[] els2 = e.trim().split(" ");
                     names.add(els2[0].trim());
-                    if (els2[1].trim().toLowerCase().equals("int"))
+                    if (els2[1].trim().equalsIgnoreCase("int"))
                         types.add(Type.INT_TYPE);
-                    else if (els2[1].trim().toLowerCase().equals("string"))
+                    else if (els2[1].trim().equalsIgnoreCase("string"))
                         types.add(Type.STRING_TYPE);
                     else {
                         System.out.println("Unknown type " + els2[1]);

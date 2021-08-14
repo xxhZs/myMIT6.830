@@ -2,7 +2,11 @@ package simpledb;
 
 import java.io.*;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -31,7 +35,12 @@ public class BufferPool {
      *
      * @param numPages maximum number of pages in this buffer pool.
      */
+    private int numPages;
+    private Map<PageId, Page> pageMap;
+    private ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
     public BufferPool(int numPages) {
+        this.numPages = numPages;
+        pageMap = new HashMap<>(numPages);
         // some code goes here
     }
     
@@ -67,7 +76,18 @@ public class BufferPool {
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
         // some code goes here
-        return null;
+        readWriteLock.readLock().lock();
+
+        if(!pageMap.containsKey(pid)){
+            DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+            if(pageMap.size()>=pageSize){
+                evictPage();
+            }
+
+            pageMap.put(pid,file.readPage(pid));
+        }
+        readWriteLock.readLock().unlock();
+        return pageMap.get(pid);
     }
 
     /**
