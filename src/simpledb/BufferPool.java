@@ -40,7 +40,7 @@ public class BufferPool {
     private ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
     public BufferPool(int numPages) {
         this.numPages = numPages;
-        pageMap = new HashMap<>(numPages);
+        pageMap = new HashMap<>();
         // some code goes here
     }
     

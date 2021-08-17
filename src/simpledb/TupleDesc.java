@@ -193,15 +193,23 @@ public class TupleDesc implements Serializable {
     public static TupleDesc merge(TupleDesc td1, TupleDesc td2) {
         // some code goes here
         Type[] newType = new Type[td1.types.length + td2.types.length];
-        String[] newFieldName = new String[td1.fieldNames.length + td2.fieldNames.length];
+        String[] newFieldName = new String[td1.types.length + td2.types.length];
         int j = 0 ;
         for(int i=0 ; i<td1.types.length ; i++){
             newType[j] = td1.types[i];
-            newFieldName[j++] = td1.fieldNames[i];
+            if(i<td1.fieldNames.length){
+                newFieldName[j++] = td1.fieldNames[i];
+            }else{
+                newFieldName[j++] = new String();
+            }
         }
         for(int i=0 ; i<td2.types.length ; i++){
             newType[j] = td2.types[i];
-            newFieldName[j++] = td2.fieldNames[i];
+            if(i<td1.fieldNames.length){
+                newFieldName[j++] = td2.fieldNames[i];
+            }else{
+                newFieldName[j++] = new String();
+            }
         }
         return new TupleDesc(newType,newFieldName);
     }
@@ -237,7 +245,7 @@ public class TupleDesc implements Serializable {
                     return true;
                 }
             }
-            for(int i = 0;i<this.numFields();i++){
+            for(int i = 0;i<this.fieldNames.length;i++){
                 if(!this.fieldNames[i].equals(newTupleDesc.fieldNames[i])){
                     return false;
                 }
