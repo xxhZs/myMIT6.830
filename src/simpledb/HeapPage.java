@@ -70,7 +70,7 @@ public class HeapPage implements Page {
      */
     private int getNumTuples() {
         // some code goes here
-        return (int) Math.floor((BufferPool.getPageSize()*8) / (td.getSize() * 8 + 1));
+        return (int) Math.floor((BufferPool.getPageSize()*8.0) / (td.getSize() * 8 + 1));
 
     }
 
