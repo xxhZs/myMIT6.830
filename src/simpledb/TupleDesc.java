@@ -121,10 +121,14 @@ public class TupleDesc implements Serializable {
      */
     public String getFieldName(int i) throws NoSuchElementException {
         // some code goes here
-        if(i<0||i>=fieldNames.length){
+        if(i<0||i>=types.length){
             throw new NoSuchElementException("index out of array");
         }else {
-            return this.fieldNames[i];
+            if(i>=fieldNames.length){
+                return new String("");
+            }else{
+                return this.fieldNames[i];
+            }
         }
     }
 
@@ -237,9 +241,15 @@ public class TupleDesc implements Serializable {
                 if(this.fieldNames.length!=0){
                     return false;
                 }else{
-                    for(int i = 0;i<this.numFields();i++) {
-                        if(!this.types[i].equals(newTupleDesc.types[i])){
-                            return false;
+                    for(int i = 0;i<this.types.length;i++) {
+                        if(this.types[i]!=null){
+                            if(!this.types[i].equals(newTupleDesc.types[i])){
+                                return false;
+                            }
+                        }else{
+                            if(newTupleDesc.types[i]!=null){
+                                return false;
+                            }
                         }
                     }
                     return true;
