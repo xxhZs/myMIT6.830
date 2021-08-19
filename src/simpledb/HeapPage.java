@@ -331,7 +331,8 @@ public class HeapPage implements Page {
         int i2 = i % 8;
         // some code goes here
         //System.out.println(i1);
-        return (header[i1]&(1<<(i2)))!=0;
+        byte b =1;
+        return (header[i1]&(b<<(i2)))!=0;
     }
 
     /**
@@ -357,23 +358,21 @@ public class HeapPage implements Page {
         // some code goes here
         return new Iterator<Tuple>() {
             private int nextslot = 0;
+
             @Override
             public boolean hasNext() {
-                return nextslot < numSlots-getNumEmptySlots();
+                while (nextslot < tuples.length && !isSlotUsed(nextslot))
+                    nextslot++;
+                return nextslot < tuples.length;
             }
 
             @Override
             public Tuple next() {
-                if(!hasNext()){
-                    throw new NoSuchElementException();
-                }
-                while(!isSlotUsed(nextslot)){
-                    nextslot++;
-                }
                 return tuples[nextslot++];
             }
         };
     }
 
 }
+
 

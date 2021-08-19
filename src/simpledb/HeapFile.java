@@ -156,80 +156,45 @@ public class HeapFile implements DbFile {
             private boolean isOpen=false;
             private Iterator<Tuple> tupleIterable;
             private HeapPage heapPage;
-            private int pid = 0;
+            private int pid = -1;
             private BufferPool bufferPool = Database.getBufferPool();
             private int currentPage = numPages();
 
-            private boolean getNextTupleIterable(int pid)throws DbException {
-                if(!isOpen){
-                    throw new DbException("not open");
-                }
-                if(pid<0||pid>currentPage){
-                    throw new DbException("not open");
-                }else{
-                    try {
-                        heapPage = (HeapPage)bufferPool.getPage(tid, new HeapPageId(getId(), pid), Permissions.READ_ONLY);
-                        if(heapPage==null){
-                            return false;
-                        }
-                        tupleIterable = heapPage.iterator();
-                    } catch (TransactionAbortedException e) {
-                        e.printStackTrace();
-                    } catch (DbException e) {
-                        e.printStackTrace();
-                    }
-                }
-                return true;
-            }
             @Override
             public void open() throws DbException, TransactionAbortedException {
-                isOpen = true;
-                getNextTupleIterable(pid++);
+                pid = 0;
+                tupleIterable = null;
             }
-
             @Override
             public boolean hasNext() throws DbException, TransactionAbortedException {
-//                if(tupleIterable==null){
-//                    return false;
-//                }else if(tupleIterable.hasNext()){
-//                    return true;
-//                }else{
-//                    // get next iterator
-//                    pid++;
-//                    if(pid>=numPages()){
-//                        return false;
-//                    }else{
-//                        getNextTupleIterable(pid);
-//                        return hasNext();
-//                    }
-//                }
-                return isOpen && pid < currentPage || (tupleIterable!=null&&pid == currentPage && tupleIterable.hasNext());
+                if(null!=tupleIterable&& tupleIterable.hasNext()){
+                    return true;
+                }else if(pid<0||pid>=currentPage){
+                    return false;
+                }else{
+                    tupleIterable = ((HeapPage)bufferPool.getPage(tid, new HeapPageId(getId(),pid++), Permissions.READ_ONLY)).iterator();
+                    return hasNext();
+                }
             }
 
             @Override
             public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
-                if(!isOpen||tupleIterable==null){
-                    throw new NoSuchElementException("expected exception");
-                    //return null;
+                if(!hasNext()){
+                    throw new DbException("no");
+                }else{
+                    return tupleIterable.next();
                 }
-                if(!tupleIterable.hasNext()){
-                    //throw new NoSuchElementException("expected exception");
-                    getNextTupleIterable(pid++);
-                }
-                return tupleIterable.next();
             }
 
             @Override
             public void rewind() throws DbException, TransactionAbortedException {
-                close();
-                open();
+                pid=0;
+                tupleIterable = null;
             }
 
             @Override
             public void close() {
-                pid=0;
-                heapPage=null;
-                isOpen=false;
+                pid=-1;
                 tupleIterable=null;
             }
         };
