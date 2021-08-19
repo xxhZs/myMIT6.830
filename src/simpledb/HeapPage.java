@@ -22,6 +22,9 @@ public class HeapPage implements Page {
     byte[] oldData;
     private final Byte oldDataLock= (byte) 0;
 
+    //脏页相关
+    private boolean isDirty;
+    private TransactionId dirtyId;
     /**
      * Create a HeapPage from a set of bytes of data read from disk.
      * The format of a HeapPage is a set of header bytes indicating
@@ -244,6 +247,13 @@ public class HeapPage implements Page {
      * @param t The tuple to delete
      */
     public void deleteTuple(Tuple t) throws DbException {
+        if(!t.getRecordId().getPageId().equals(this.getId())){
+            throw new DbException("not this page");
+        }
+        if(!this.isSlotUsed(t.getRecordId().getTupleNumber())){
+            throw new DbException("not this tuple");
+        }
+        markSlotUsed(t.getRecordId().getTupleNumber(),false);
         // some code goes here
         // not necessary for lab1
     }
@@ -256,6 +266,20 @@ public class HeapPage implements Page {
      * @param t The tuple to add.
      */
     public void insertTuple(Tuple t) throws DbException {
+        if(!t.getTupleDesc().equals(this.td)){
+            throw new DbException(t.getTupleDesc()+"!="+this.td);
+        }
+        if(this.getNumEmptySlots()==0){
+            throw new DbException("页面满了");
+        }
+        for(int i=0;i<numSlots;i++){
+            if(!isSlotUsed(i)){
+                t.setRecordId(new RecordId(this.getId(),i));
+                tuples[i] = t;
+                markSlotUsed(i,true);
+                break;
+            }
+        }
         // some code goes here
         // not necessary for lab1
     }
@@ -266,6 +290,8 @@ public class HeapPage implements Page {
      */
     public void markDirty(boolean dirty, TransactionId tid) {
         // some code goes here
+        this.dirtyId = tid;
+        this.isDirty = dirty;
         // not necessary for lab1
     }
 
@@ -275,7 +301,11 @@ public class HeapPage implements Page {
     public TransactionId isDirty() {
         // some code goes here
         // Not necessary for lab1
-        return null;
+        if(isDirty){
+            return dirtyId;
+        }else{
+            return null;
+        }
     }
 
     /**
@@ -308,6 +338,13 @@ public class HeapPage implements Page {
      * Abstraction to fill or clear a slot on this page.
      */
     private void markSlotUsed(int i, boolean value) {
+        int i1 = i/8;
+        int i2 = i%8;
+        if(value){
+            header[i1]|=(1<<i2);
+        }else{
+            header[i1]^=(1<<i2);
+        }
         // some code goes here
         // not necessary for lab1
     }

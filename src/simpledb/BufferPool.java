@@ -2,7 +2,9 @@ package simpledb;
 
 import java.io.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -83,7 +85,6 @@ public class BufferPool {
             if(pageMap.size()>=pageSize){
                 evictPage();
             }
-
             pageMap.put(pid,file.readPage(pid));
         }
         readWriteLock.readLock().unlock();
@@ -152,6 +153,11 @@ public class BufferPool {
     public void insertTuple(TransactionId tid, int tableId, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
+        readWriteLock.writeLock().lock();
+        HeapFile file = (HeapFile) Database.getCatalog().getDatabaseFile(tableId);
+        ArrayList<Page> pages = file.insertTuple(tid, t);
+        updateDirtyPage(pages,tid);
+        readWriteLock.writeLock().unlock();
         // not necessary for lab1
     }
 
@@ -171,9 +177,28 @@ public class BufferPool {
     public  void deleteTuple(TransactionId tid, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
+        readWriteLock.writeLock().lock();
+        HeapFile file = (HeapFile) Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
+        ArrayList<Page> pages = file.deleteTuple(tid, t);
+        updateDirtyPage(pages,tid);
+        readWriteLock.writeLock().unlock();
         // not necessary for lab1
     }
 
+    public void updateDirtyPage(List<Page> pages,TransactionId tid){
+        for(Page page : pages){
+            page.markDirty(true,tid);
+            PageId id = page.getId();
+            if(!this.pageMap.containsKey(page)){
+                try {
+                    evictPage();
+                } catch (DbException e) {
+                    e.printStackTrace();
+                }
+            }
+            pageMap.put(id,page);
+        }
+    }
     /**
      * Flush all dirty pages to disk.
      * NB: Be careful using this routine -- it writes dirty data to disk so will
