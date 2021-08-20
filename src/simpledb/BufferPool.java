@@ -2,10 +2,7 @@ package simpledb;
 
 import java.io.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -40,9 +37,12 @@ public class BufferPool {
     private int numPages;
     private Map<PageId, Page> pageMap;
     private ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+    //实现lru
+    LinkedList<PageId> linkByLru;
     public BufferPool(int numPages) {
         this.numPages = numPages;
         pageMap = new HashMap<>();
+        linkByLru = new LinkedList<>();
         // some code goes here
     }
     
@@ -79,14 +79,16 @@ public class BufferPool {
         throws TransactionAbortedException, DbException {
         // some code goes here
         readWriteLock.readLock().lock();
-
         if(!pageMap.containsKey(pid)){
             DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
-            if(pageMap.size()>=pageSize){
+            if(pageMap.size()>=numPages){
                 evictPage();
             }
             pageMap.put(pid,file.readPage(pid));
+            linkByLru.addFirst(pid);
         }
+        linkByLru.remove(pid);
+        linkByLru.addFirst(pid);
         readWriteLock.readLock().unlock();
         return pageMap.get(pid);
     }
@@ -188,15 +190,16 @@ public class BufferPool {
     public void updateDirtyPage(List<Page> pages,TransactionId tid){
         for(Page page : pages){
             page.markDirty(true,tid);
-            PageId id = page.getId();
-            if(!this.pageMap.containsKey(page)){
-                try {
-                    evictPage();
-                } catch (DbException e) {
-                    e.printStackTrace();
-                }
-            }
-            pageMap.put(id,page);
+//            PageId id = page.getId();
+//            if(!this.pageMap.containsKey(id)){
+//                try {
+//                    evictPage();
+//                } catch (DbException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//            pageMap.put(id,page);
+//            linkByLru.addFirst(id);
         }
     }
     /**
@@ -206,6 +209,9 @@ public class BufferPool {
      */
     public synchronized void flushAllPages() throws IOException {
         // some code goes here
+        for(PageId pageId:this.pageMap.keySet()){
+            flushPage(pageId);
+        }
         // not necessary for lab1
 
     }
@@ -220,6 +226,10 @@ public class BufferPool {
     */
     public synchronized void discardPage(PageId pid) {
         // some code goes here
+        if(pageMap.containsKey(pid)){
+            pageMap.remove(pid);
+            linkByLru.remove(pid);
+        }
         // not necessary for lab1
     }
 
@@ -229,6 +239,12 @@ public class BufferPool {
      */
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
+        Page page = pageMap.get(pid);
+        linkByLru.remove(pid);
+        linkByLru.addFirst(pid);
+        DbFile databaseFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
+        databaseFile.writePage(page);
+        page.markDirty(false,null);
         // not necessary for lab1
     }
 
@@ -245,6 +261,13 @@ public class BufferPool {
      */
     private synchronized  void evictPage() throws DbException {
         // some code goes here
+        //lfu
+        int size = pageMap.size();
+        for(int i =numPages-1;i<size;i++){
+            PageId last = linkByLru.getLast();
+            pageMap.remove(last);
+            linkByLru.removeLast();
+        }
         // not necessary for lab1
     }
 
