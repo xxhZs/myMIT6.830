@@ -190,16 +190,16 @@ public class BufferPool {
     public void updateDirtyPage(List<Page> pages,TransactionId tid){
         for(Page page : pages){
             page.markDirty(true,tid);
-//            PageId id = page.getId();
-//            if(!this.pageMap.containsKey(id)){
-//                try {
-//                    evictPage();
-//                } catch (DbException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//            pageMap.put(id,page);
-//            linkByLru.addFirst(id);
+            PageId id = page.getId();
+            if(!this.pageMap.containsKey(id)){
+                try {
+                    evictPage();
+                } catch (DbException e) {
+                    e.printStackTrace();
+                }
+            }
+            pageMap.put(id,page);
+            linkByLru.addFirst(id);
         }
     }
     /**
