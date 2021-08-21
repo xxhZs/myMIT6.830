@@ -13,6 +13,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class TableStats {
 
+    private Map<Integer , IntHistogram> intHistogramMap;
+    private Map<Integer,StringHistogram> stringHistogramMap;
+    private int iocostperpage;
+    private DbFile file;
+    private int numTuple;
+
+
+
     private static final ConcurrentHashMap<String, TableStats> statsMap = new ConcurrentHashMap<String, TableStats>();
 
     static final int IOCOSTPERPAGE = 1000;
@@ -85,7 +93,71 @@ public class TableStats {
         // necessarily have to (for example) do everything
         // in a single scan of the table.
         // some code goes here
-    }
+        this.file = Database.getCatalog().getDatabaseFile(tableid);
+        this.iocostperpage = ioCostPerPage;
+        this.intHistogramMap = new HashMap<>();
+        this.stringHistogramMap = new HashMap<>();
+        TupleDesc tupleDesc = file.getTupleDesc();
+        int fieldNum = tupleDesc.numFields();
+        Type[] types = new Type[fieldNum];
+        int[] min = new int[fieldNum];
+        int[] max = new int[fieldNum];
+        for(int i = 0 ; i < fieldNum ; i++){
+            types[i] = tupleDesc.getFieldType(i);
+            min[i] = Integer.MAX_VALUE;
+            max[i] = Integer.MIN_VALUE;
+        }
+        SeqScan scan = new SeqScan(new TransactionId() , tableid);
+            try {
+                scan.open();
+                while(scan.hasNext()) {
+                    Tuple next = scan.next();
+                    numTuple++;
+                    for(int i = 0;i<fieldNum;i++) {
+                        int val = next.getField(i).hashCode();
+
+                        max[i] = Math.max(max[i],val);
+                        min[i] = Math.min(min[i],val);
+                    }
+                }
+                for(int i = 0 ;i < fieldNum ; i++) {
+                    switch (types[i]) {
+                        case INT_TYPE:
+                            intHistogramMap.put(i, new IntHistogram(NUM_HIST_BINS, min[i], max[i]));
+                            break;
+                        case STRING_TYPE:
+                            stringHistogramMap.put(i, new StringHistogram(NUM_HIST_BINS));
+                            break;
+                        default:
+                            throw new UnsupportedOperationException();
+                    }
+                }
+                scan.rewind();
+                while(scan.hasNext()) {
+                    Tuple next = scan.next();
+                    for(int i = 0 ; i < fieldNum ; i++) {
+                        switch (types[i]) {
+                            case STRING_TYPE:
+                                stringHistogramMap.get(i).addValue(((StringField)next.getField(i)).getValue());
+                                break;
+                            case INT_TYPE:
+
+                                intHistogramMap.get(i).addValue(((IntField)next.getField(i)).getValue());
+                                break;
+                            default:
+                                throw new UnsupportedOperationException();
+                        }
+                    }
+                }
+                scan.close();
+            } catch (TransactionAbortedException e) {
+                e.printStackTrace();
+            } catch (DbException e) {
+                e.printStackTrace();
+            }
+
+        }
+
 
     /**
      * Estimates the cost of sequentially scanning the file, given that the cost
@@ -101,7 +173,12 @@ public class TableStats {
      */
     public double estimateScanCost() {
         // some code goes here
-        return 0;
+        if(this.file instanceof HeapFile) {
+            HeapFile heapFile = (HeapFile) file;
+            return heapFile.numPages() * iocostperpage;
+        }else {
+            throw new UnsupportedOperationException();
+        }
     }
 
     /**
@@ -115,7 +192,7 @@ public class TableStats {
      */
     public int estimateTableCardinality(double selectivityFactor) {
         // some code goes here
-        return 0;
+        return (int)(totalTuples()*selectivityFactor);
     }
 
     /**
@@ -130,7 +207,16 @@ public class TableStats {
      * */
     public double avgSelectivity(int field, Predicate.Op op) {
         // some code goes here
-        return 1.0;
+        double res = 0.0;
+        Type fieldType = this.file.getTupleDesc().getFieldType(field);
+        switch (fieldType){
+            case INT_TYPE:
+                res = intHistogramMap.get(field).avgSelectivity();
+            case STRING_TYPE:
+                res = stringHistogramMap.get(field).avgSelectivity();
+            default:
+        }
+        return res;
     }
 
     /**
@@ -148,7 +234,19 @@ public class TableStats {
      */
     public double estimateSelectivity(int field, Predicate.Op op, Field constant) {
         // some code goes here
-        return 1.0;
+        double res = 0.0;
+        Type fieldType = this.file.getTupleDesc().getFieldType(field);
+        switch (fieldType){
+            case INT_TYPE:
+                res = intHistogramMap.get(field).estimateSelectivity(op,((IntField) constant).getValue());
+                break;
+            case STRING_TYPE:
+                res = stringHistogramMap.get(field).estimateSelectivity(op,((StringField)constant).getValue());
+                break;
+            default:
+                throw new UnsupportedOperationException();
+        }
+        return res;
     }
 
     /**
@@ -156,7 +254,7 @@ public class TableStats {
      * */
     public int totalTuples() {
         // some code goes here
-        return 0;
+        return numTuple;
     }
 
 }

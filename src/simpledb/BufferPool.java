@@ -240,10 +240,12 @@ public class BufferPool {
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
         Page page = pageMap.get(pid);
-        linkByLru.remove(pid);
-        linkByLru.addFirst(pid);
+//        linkByLru.remove(pid);
+//        linkByLru.addFirst(pid);
         DbFile databaseFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
         databaseFile.writePage(page);
+        pageMap.remove(page);
+        linkByLru.remove(page);
         page.markDirty(false,null);
         // not necessary for lab1
     }

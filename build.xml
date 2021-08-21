@@ -179,7 +179,7 @@
     <target name="javadocs" description="Build javadoc documentation">
         <javadoc destdir="${doc}" access="private" failonerror="true" source="${sourceversion}" additionalparam="-Xdoclint:none">
             <classpath refid="classpath.base" />
-            <fileset dir="src/java" defaultexcludes="yes">
+            <fileset dir="src/test" defaultexcludes="yes">
                 <include name="simpledb/**/*.java"/>
             </fileset>
         </javadoc>

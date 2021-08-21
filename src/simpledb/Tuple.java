@@ -141,4 +141,7 @@ public class Tuple implements Serializable {
         this.td = td;
         // some code goes here
     }
+
+    public void getField() {
+    }
 }
