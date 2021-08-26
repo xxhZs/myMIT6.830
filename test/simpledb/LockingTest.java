@@ -5,6 +5,13 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import junit.framework.JUnit4TestAdapter;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.Result;
+import org.junit.runner.RunWith;
+import org.junit.runner.notification.Failure;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class LockingTest extends TestUtil.CreateHeapFile {
   private PageId p0, p1, p2;
@@ -194,4 +201,30 @@ public class LockingTest extends TestUtil.CreateHeapFile {
   }
 
 }
+class TestRunner {
+
+  public static void main(String[] args) throws InterruptedException {
+    List<Result> res = new ArrayList<Result>();
+    for (int i = 0; i < 100; i++) {
+      Result result = JUnitCore.runClasses(LockingTest.class);
+      Thread.sleep(1000);
+      res.add(result);
+    }
+
+    int i = 0;
+    System.out.println("共执行本用例的次数为：" + res.size());
+    for (Result result : res) {
+      i = i + 1;
+      System.out.println("第" + i + "遍执行结果：");
+      System.out.println(result.getRunCount());
+      for (Failure failure : result.getFailures()) {
+        System.out.println(failure.toString());
+      }
+
+      System.out.println(result.wasSuccessful());
+    }
+  }
+
+}
+
 

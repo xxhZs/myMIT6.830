@@ -36,13 +36,14 @@ public class BufferPool {
      */
     private int numPages;
     private Map<PageId, Page> pageMap;
-    private ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+    private LockManager lock;
     //实现lru
     LinkedList<PageId> linkByLru;
     public BufferPool(int numPages) {
         this.numPages = numPages;
         pageMap = new HashMap<>();
         linkByLru = new LinkedList<>();
+        this.lock = new LockManager();
         // some code goes here
     }
     
@@ -78,7 +79,17 @@ public class BufferPool {
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
         // some code goes here
-        readWriteLock.readLock().lock();
+        try {
+            Debug.log("{}获取{}的读锁111",tid,pid);
+            if(perm.equals(Permissions.READ_ONLY)){
+                lock.acquireLock(tid,pid, LockManager.WriteOrRead.READ);
+            }else{
+                lock.acquireLock(tid,pid, LockManager.WriteOrRead.WRITE);
+            }
+            //System.out.println(tid+"获取的读锁222");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         if(!pageMap.containsKey(pid)){
             DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
             if(pageMap.size()>=numPages){
@@ -89,7 +100,9 @@ public class BufferPool {
         }
         linkByLru.remove(pid);
         linkByLru.addFirst(pid);
-        readWriteLock.readLock().unlock();
+        Debug.log("{}释放{}的读锁333",tid,pid);
+        //lock.releaseLock(tid,pid, LockManager.WriteOrRead.READ);
+        Debug.log("{}释放掉{}的读锁444",tid,pid);
         return pageMap.get(pid);
     }
 
@@ -105,6 +118,8 @@ public class BufferPool {
     public  void releasePage(TransactionId tid, PageId pid) {
         // some code goes here
         // not necessary for lab1|lab2
+        lock.releaseLock(tid,pid, LockManager.WriteOrRead.READ);
+        lock.releaseLock(tid,pid, LockManager.WriteOrRead.WRITE);
     }
 
     /**
@@ -121,7 +136,7 @@ public class BufferPool {
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
         // not necessary for lab1|lab2
-        return false;
+        return lock.holdsLock(tid,p);
     }
 
     /**
@@ -155,11 +170,9 @@ public class BufferPool {
     public void insertTuple(TransactionId tid, int tableId, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
-        readWriteLock.writeLock().lock();
         HeapFile file = (HeapFile) Database.getCatalog().getDatabaseFile(tableId);
         ArrayList<Page> pages = file.insertTuple(tid, t);
         updateDirtyPage(pages,tid);
-        readWriteLock.writeLock().unlock();
         // not necessary for lab1
     }
 
@@ -179,11 +192,9 @@ public class BufferPool {
     public  void deleteTuple(TransactionId tid, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
-        readWriteLock.writeLock().lock();
         HeapFile file = (HeapFile) Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
         ArrayList<Page> pages = file.deleteTuple(tid, t);
         updateDirtyPage(pages,tid);
-        readWriteLock.writeLock().unlock();
         // not necessary for lab1
     }
 
@@ -264,12 +275,17 @@ public class BufferPool {
     private synchronized  void evictPage() throws DbException {
         // some code goes here
         //lfu
-        int size = pageMap.size();
-        for(int i =numPages-1;i<size;i++){
+        int i = numPages-1;
+        while(i> pageMap.size()){
             PageId last = linkByLru.getLast();
+            if(pageMap.get(last).isDirty()==null){
+                continue;
+            }
             pageMap.remove(last);
             linkByLru.removeLast();
+            i--;
         }
+
         // not necessary for lab1
     }
 

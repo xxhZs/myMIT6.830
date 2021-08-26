@@ -18,6 +18,7 @@ public class HeapFile implements DbFile {
     private TupleDesc td;
 
     private RandomAccessFile randomAccessFile;
+    private LockManager lockManager;
 
     /**
      * Constructs a heap file backed by the specified file.
@@ -30,6 +31,7 @@ public class HeapFile implements DbFile {
         // some code goes here
         this.td = td;
         this.file = f;
+        lockManager = new LockManager();
     }
 
     /**
@@ -117,10 +119,11 @@ public class HeapFile implements DbFile {
         //查找空白页
         ArrayList<Page> list = new ArrayList<>();
         for(int i =0 ;i<numPages();i++){
-            HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid, new HeapPageId(getId(), i), Permissions.READ_ONLY);
+            HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid, new HeapPageId(getId(), i), Permissions.READ_WRITE);
             if(page.getNumEmptySlots()>0){
                 page.insertTuple(t);
                 list.add(page);
+                Database.getBufferPool().releasePage(tid, page.getId());
                 break;
             }
         }
@@ -129,9 +132,10 @@ public class HeapFile implements DbFile {
             byte[] emptyPageData = HeapPage.createEmptyPageData();
             HeapPage heapPage = new HeapPage(new HeapPageId(getId(),numPages()),emptyPageData);
             writePage(heapPage);
-            HeapPage page = (HeapPage)Database.getBufferPool().getPage(tid, heapPage.getId(), Permissions.READ_ONLY);
+            HeapPage page = (HeapPage)Database.getBufferPool().getPage(tid, heapPage.getId(), Permissions.READ_WRITE);
             page.insertTuple(t);
             list.add(page);
+            Database.getBufferPool().releasePage(tid, page.getId());
         }
         return list;
         // not necessary for lab1
@@ -142,9 +146,10 @@ public class HeapFile implements DbFile {
             TransactionAbortedException {
         // some code goes here
         ArrayList<Page> list = new ArrayList<>();
-        HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid,t.getRecordId().getPageId(),Permissions.READ_ONLY);
+        HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid,t.getRecordId().getPageId(),Permissions.READ_WRITE);
         page.deleteTuple(t);
         list.add(page);
+        Database.getBufferPool().releasePage(tid,page.getId());
         return list;
         // not necessary for lab1
     }
