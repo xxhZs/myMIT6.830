@@ -41,7 +41,7 @@ public class HeapPageId implements PageId {
      */
     public int hashCode() {
         // some code goes here
-        return tableId+pgNo;
+        return ((Integer)tableId).hashCode() + ((Integer)pgNo).hashCode();
         //throw new UnsupportedOperationException("implement this");
     }
 
@@ -55,7 +55,7 @@ public class HeapPageId implements PageId {
     public boolean equals(Object o) {
         if(o instanceof HeapPageId){
             HeapPageId heapPageId = (HeapPageId) o;
-            if(heapPageId.pgNo==this.pgNo&&heapPageId.tableId==this.tableId){
+            if(((Integer)heapPageId.pgNo).equals(this.pgNo)  && ((Integer)heapPageId.tableId).equals(this.tableId)){
                 return true;
             }
         }

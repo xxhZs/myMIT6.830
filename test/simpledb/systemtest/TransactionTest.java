@@ -43,6 +43,7 @@ public class TransactionTest extends SimpleDbTestBase {
                 fail("Timed out waiting for transaction to complete");
             }
             try {
+                System.out.println("000dkjfsdk-------------"+tester.getName());
                 tester.join(timeout);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);

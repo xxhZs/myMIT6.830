@@ -123,7 +123,7 @@ public class HeapFile implements DbFile {
             if(page.getNumEmptySlots()>0){
                 page.insertTuple(t);
                 list.add(page);
-                Database.getBufferPool().releasePage(tid, page.getId());
+                //Database.getBufferPool().releasePage(tid, page.getId());
                 break;
             }
         }
@@ -135,7 +135,7 @@ public class HeapFile implements DbFile {
             HeapPage page = (HeapPage)Database.getBufferPool().getPage(tid, heapPage.getId(), Permissions.READ_WRITE);
             page.insertTuple(t);
             list.add(page);
-            Database.getBufferPool().releasePage(tid, page.getId());
+            //Database.getBufferPool().releasePage(tid, page.getId());
         }
         return list;
         // not necessary for lab1
@@ -149,7 +149,7 @@ public class HeapFile implements DbFile {
         HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid,t.getRecordId().getPageId(),Permissions.READ_WRITE);
         page.deleteTuple(t);
         list.add(page);
-        Database.getBufferPool().releasePage(tid,page.getId());
+        //Database.getBufferPool().releasePage(tid,page.getId());
         return list;
         // not necessary for lab1
     }
