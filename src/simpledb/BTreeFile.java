@@ -195,7 +195,37 @@ public class BTreeFile implements DbFile {
 			Field f) 
 					throws DbException, TransactionAbortedException {
 		// some code goes here
-        return null;
+		if(pid.pgcateg() == BTreePageId.LEAF){
+			//是叶子节点直接返回
+			return (BTreeLeafPage) this.getPage(tid,dirtypages,pid,perm);
+		}else{
+			//不是叶子节点,查找比他大的，然后向下找
+			BTreePageId nextPageId;
+			BTreeInternalPage findPage = (BTreeInternalPage) this.getPage(tid, dirtypages, pid, Permissions.READ_ONLY);
+
+			BTreeEntry entry;
+			Iterator<BTreeEntry> iterator = findPage.iterator();
+			if(iterator.hasNext()){
+				entry = iterator.next();
+			}else{
+				throw new DbException("没有子节点了");
+			}
+			if(f==null){
+				nextPageId = entry.getLeftChild();
+			}else {
+				while (f.compare(Op.GREATER_THAN, entry.getKey()) && iterator.hasNext()) {
+					entry = iterator.next();
+				}
+				if (f.compare(Op.LESS_THAN_OR_EQ, entry.getKey())) {
+					nextPageId = entry.getLeftChild();
+
+				} else {
+//					nextPageId = entry.getLeftChild();
+					nextPageId = entry.getRightChild();
+				}
+			}
+			return findLeafPage(tid,dirtypages,nextPageId,perm,f);
+		}
 	}
 	
 	/**

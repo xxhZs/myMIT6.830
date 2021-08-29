@@ -43,7 +43,7 @@ public class TransactionTest extends SimpleDbTestBase {
                 fail("Timed out waiting for transaction to complete");
             }
             try {
-                System.out.println("000dkjfsdk-------------"+tester.getName());
+                //System.out.println("000dkjfsdk-------------"+tester.getName());
                 tester.join(timeout);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
@@ -251,5 +251,18 @@ public class TransactionTest extends SimpleDbTestBase {
     /** Make test compatible with older version of ant. */
     public static junit.framework.Test suite() {
         return new junit.framework.JUnit4TestAdapter(TransactionTest.class);
+    }
+}
+class Test100{
+    public static void main(String[] args)
+            throws IOException, TransactionAbortedException, DbException, InterruptedException {
+        for(int i = 0 ; i<100;i++){
+            new TransactionTest().testSingleThread();
+            new TransactionTest().testTwoThreads();
+            new TransactionTest().testFiveThreads();
+            new TransactionTest().testTenThreads();
+            new TransactionTest().testAllDirtyFails();
+            Thread.sleep(1000);
+        }
     }
 }
