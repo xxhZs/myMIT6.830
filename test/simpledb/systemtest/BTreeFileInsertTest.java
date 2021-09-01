@@ -69,6 +69,7 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
 		while(it.hasNext()) {
 			Tuple t = it.next();
 			int value = ((IntField) t.getField(0)).getValue();
+
 			assertTrue(value >= prev);
 			prev = value;
 		} 

@@ -299,7 +299,6 @@ public class BTreeFile implements DbFile {
                 break;
             }
         }
-        page.setRightSiblingId(newLeafPage.getId());
         if(page.getRightSiblingId()!=null){
             BTreeLeafPage oledRightPage =
                     (BTreeLeafPage) getPage(tid, dirtypages, page.getRightSiblingId(), Permissions.READ_WRITE);
@@ -307,6 +306,7 @@ public class BTreeFile implements DbFile {
             oledRightPage.setLeftSiblingId(newLeafPage.getId());
             dirtypages.put(oledRightPage.getId(),oledRightPage);
         }
+        page.setRightSiblingId(newLeafPage.getId());
         newLeafPage.setLeftSiblingId(page.getId());
 //        while(!stack.isEmpty()){
 //            lastTuple  = stack.pop();
