@@ -126,6 +126,9 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
 		
 		int totalEntries = page.getNumEntries() + otherPage.getNumEntries();
 		assertEquals(entriesPerPage - 1, totalEntries);
+		System.out.println(entriesPerPage/2);
+		System.out.println(page.getNumEntries());
+		System.out.println(otherPage.getNumEntries());
 		assertTrue(entriesPerPage/2 == page.getNumEntries() || 
 				entriesPerPage/2 - 1 == page.getNumEntries());
 		assertTrue(entriesPerPage/2 == otherPage.getNumEntries() || 
