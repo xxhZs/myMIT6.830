@@ -18,7 +18,6 @@ public class HeapFile implements DbFile {
     private TupleDesc td;
 
     private RandomAccessFile randomAccessFile;
-    private LockManager lockManager;
 
     /**
      * Constructs a heap file backed by the specified file.
@@ -31,7 +30,6 @@ public class HeapFile implements DbFile {
         // some code goes here
         this.td = td;
         this.file = f;
-        lockManager = new LockManager();
     }
 
     /**

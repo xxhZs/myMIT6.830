@@ -170,8 +170,12 @@ public class BufferPool {
                 for (PageId pageId : pageIds) {
                     Page page = pageMap.getOrDefault(pageId,null);
                     if (page != null && page.isDirty() != null) {
-                        discardPage(pageId);
+                        //discardPage(pageId);
+                        pageMap.put(pageId, pageMap.get(pageId).getBeforeImage());
                     }
+                   // releasePage(tid,pageId);
+                }
+                for (PageId pageId : pageIds) {
                     releasePage(tid,pageId);
                 }
             }
@@ -218,7 +222,7 @@ public class BufferPool {
     public void deleteTuple(TransactionId tid, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
-        HeapFile file = (HeapFile) Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
+        DbFile file =  Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
         ArrayList<Page> pages = file.deleteTuple(tid, t);
         updateDirtyPage(pages, tid);
         // not necessary for lab1
@@ -292,6 +296,7 @@ public class BufferPool {
                 pageMap.remove(page.getId());
                 linkByLru.remove(page.getId());
                 page.markDirty(false, null);
+                page.setBeforeImage();
             }
         }
 
@@ -308,6 +313,8 @@ public class BufferPool {
         if (pageIds != null) {
             for(PageId pageId : pageIds){
                 flushPage(pageId);
+            }
+            for(PageId pageId : pageIds){
                 releasePage(tid,pageId);
             }
         }
@@ -360,7 +367,11 @@ public class BufferPool {
             Page   p   = entry.getValue();
             if (p.isDirty() == null) {
                 // dont need to flushpage since all page evicted are not dirty
-                // flushPage(pid);
+                try {
+                    flushPage(pid);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 discardPage(pid);
                 return;
             }

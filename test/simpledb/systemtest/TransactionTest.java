@@ -253,16 +253,16 @@ public class TransactionTest extends SimpleDbTestBase {
         return new junit.framework.JUnit4TestAdapter(TransactionTest.class);
     }
 }
-class Test100{
-    public static void main(String[] args)
-            throws IOException, TransactionAbortedException, DbException, InterruptedException {
-        for(int i = 0 ; i<100;i++){
-            new TransactionTest().testSingleThread();
-            new TransactionTest().testTwoThreads();
-            new TransactionTest().testFiveThreads();
-            new TransactionTest().testTenThreads();
-            new TransactionTest().testAllDirtyFails();
-            Thread.sleep(1000);
-        }
-    }
-}
+//class Test100{
+//    public static void main(String[] args)
+//            throws IOException, TransactionAbortedException, DbException, InterruptedException {
+//        for(int i = 0 ; i<100;i++){
+//            new TransactionTest().testSingleThread();
+//            new TransactionTest().testTwoThreads();
+//            new TransactionTest().testFiveThreads();
+//            new TransactionTest().testTenThreads();
+//            new TransactionTest().testAllDirtyFails();
+//            Thread.sleep(1000);
+//        }
+//    }
+//}

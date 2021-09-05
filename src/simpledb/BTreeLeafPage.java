@@ -32,6 +32,7 @@ public class BTreeLeafPage extends BTreePage {
 		}
 
 		if (null != upperBound && null != prev){
+			//System.out.println(prev+"+"+upperBound);
 			assert(prev.compare(Predicate.Op.LESS_THAN_OR_EQ, upperBound));
 		}
 
