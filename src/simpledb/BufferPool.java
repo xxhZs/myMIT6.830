@@ -113,8 +113,8 @@ public class BufferPool {
         }
         linkByLru.remove(pid);
         linkByLru.addFirst(pid);
-        if (perm==Permissions.READ_WRITE)
-            pageMap.get(pid).markDirty(true, tid);
+//        if (perm==Permissions.READ_WRITE)
+//            pageMap.get(pid).markDirty(true, tid);
         //lock.releaseLock(tid,pid,WriteOrRead.READ);
         return pageMap.get(pid);
     }
