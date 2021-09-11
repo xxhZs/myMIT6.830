@@ -5,6 +5,8 @@ import java.io.*;
 import java.util.*;
 import java.lang.reflect.*;
 
+import javax.xml.crypto.Data;
+
 /**
 LogFile implements the recovery subsystem of SimpleDb.  This class is
 able to write different log records as needed, but it is the
@@ -464,12 +466,42 @@ public class LogFile {
     public void rollback(TransactionId tid)
         throws NoSuchElementException, IOException {
         synchronized (Database.getBufferPool()) {
-            synchronized(this) {
+            synchronized (this) {
                 preAppend();
                 // some code goes here
+                long id = tid.getId();
+                rollbackById(id);
             }
         }
     }
+    public void rollbackById(long id) throws IOException {
+        Long begin = tidToFirstLogRecord.get(id);
+
+        raf.seek(raf.length() - LONG_SIZE);
+        long l = raf.readLong();
+        while(begin < l){
+            raf.seek(l);
+            int type = raf.readInt();
+            long record_tid;
+            switch (type){
+                case UPDATE_RECORD:
+                    record_tid = raf.readLong();
+                    if(record_tid == id){
+                        Page before = this.readPageData(raf);
+                        Database.getCatalog().getDatabaseFile(before.getId().getTableId()).writePage(before);
+                        Database.getBufferPool().discardPage(before.getId());
+                        break;
+                    }
+                default:
+                    break;
+            }
+            raf.seek(l - LONG_SIZE);
+            l = raf.readLong();
+        }
+        raf.seek(currentOffset);
+    }
+
+
 
     /** Shutdown the logging system, writing out whatever state
         is necessary so that start up can happen quickly (without
@@ -494,6 +526,112 @@ public class LogFile {
             synchronized (this) {
                 recoveryUndecided = false;
                 // some code goes here
+                currentOffset = raf.length();
+                if( currentOffset - LONG_SIZE > 0){
+                    //有日志，进行恢复
+                    raf.seek( currentOffset - LONG_SIZE);
+                    //跳到日志的地方
+                    long iter = raf.readLong();
+                    raf.seek(0);
+                    long lastCheckPoint = raf.readLong();
+                    if( lastCheckPoint == -1L){
+                        lastCheckPoint = LONG_SIZE;
+                    }
+
+                    Set<Long> transactions = new HashSet<>();
+                    Set<Long> commits = new HashSet<>();
+
+                    //从最后一条记录往前找，直到最后一个检查点，这中间的记录都没有搞过
+                    //所以这些记录都是要往前找，看都干了什么
+                    while(iter >= lastCheckPoint){
+                        raf.seek(iter);
+                        int i = raf.readInt();
+                        long record_tid;
+                        switch (i){
+                            case UPDATE_RECORD:
+                                break;
+                            case ABORT_RECORD:
+                                break;
+                            case COMMIT_RECORD:
+                                record_tid = raf.readLong();
+                                commits.add(record_tid);
+                                break;
+                            case BEGIN_RECORD:
+                                record_tid = raf.readLong();
+                                transactions.add(record_tid);
+                                break;
+                            case CHECKPOINT_RECORD:
+                                raf.seek(raf.getFilePointer()+LONG_SIZE);
+                                int keySize = raf.readInt();
+                                for(int ii = 0 ; ii < keySize ; ii++){
+                                    record_tid = raf.readLong();
+                                    long l = raf.readLong();
+                                    transactions.add(record_tid);
+                                    tidToFirstLogRecord.put(record_tid,l);
+                                }
+                                break;
+                            default:
+                                throw new IOException("an");
+                        }
+                        if(iter > LONG_SIZE) {
+                            raf.seek(iter - LONG_SIZE);
+                            iter = raf.readLong();
+                        }else{
+                            iter = -1;
+                        }
+
+                    }
+                    //找到记录了，接下来要恢复了
+                    iter = lastCheckPoint;
+                    while( iter < currentOffset){
+                        raf.seek(iter);
+                        int type = raf.readInt();
+                        long record_tid;
+                        switch(type){
+                            case UPDATE_RECORD:
+                                //改变的日志，
+                                raf.seek(raf.getFilePointer()+LONG_SIZE);
+                                Page before = this.readPageData(raf);
+                                Page after = this.readPageData(raf);
+                                Database.getCatalog().getDatabaseFile(after.getId().getTableId()).writePage(after);
+
+                                iter = raf.getFilePointer();
+                                break;
+                            case ABORT_RECORD:
+                                record_tid = raf.readLong();
+                                if(tidToFirstLogRecord.get(record_tid) == null){
+                                    throw new IOException("s死了");
+                                }
+                                iter = raf.getFilePointer();
+                                rollbackById(record_tid);
+                                transactions.remove(record_tid);
+                                break;
+                            case CHECKPOINT_RECORD:
+                                raf.seek(raf.getFilePointer() + LONG_SIZE);
+                                int num = raf.readInt();
+                                iter = raf.getFilePointer() + num*LONG_SIZE*2;
+                                break;
+                            case COMMIT_RECORD:
+                                record_tid = raf.readLong();
+                                tidToFirstLogRecord.remove(record_tid);
+                                iter = raf.getFilePointer();
+                                break;
+                            case BEGIN_RECORD:
+                                record_tid = raf.readLong();
+                                tidToFirstLogRecord.put(record_tid,iter);
+                                iter = raf.getFilePointer();
+                                break;
+                            default:
+                                throw new IOException("a");
+                        }
+                        iter += LONG_SIZE;
+                    }
+                    for(Long tid : transactions){
+                        if(!commits.contains(tid)){
+                            rollbackById(tid);
+                        }
+                    }
+                }
             }
          }
     }
