@@ -174,6 +174,7 @@ public class BufferPool {
                 if (pageMap.get(pid).isDirty() != null
                         && pageMap.get(pid).isDirty().equals(tid)) {
                     if (commit) {
+                        pageMap.get(pid).setBeforeImage();
                         flushPage(pid);
                     } else {
                        // pageMap.put(pid, pageMap.get(pid).getBeforeImage());
@@ -298,6 +299,9 @@ public class BufferPool {
         if(pageMap.containsKey(pid)){
             Page page = pageMap.get(pid);
             if(page.isDirty()!=null){
+                Database.getLogFile().logWrite(page.isDirty(), page.getBeforeImage(), page);
+                Database.getLogFile().force();
+
                 DbFile databaseFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
                 databaseFile.writePage(page);
                 pageMap.remove(page.getId());
