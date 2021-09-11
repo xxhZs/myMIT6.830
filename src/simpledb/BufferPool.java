@@ -29,7 +29,6 @@ public class BufferPool {
     /**
      * Bytes per page, including header.
      */
-
     private static final int DEFAULT_PAGE_SIZE = 4096;
 
     private static int pageSize = DEFAULT_PAGE_SIZE;
@@ -175,7 +174,6 @@ public class BufferPool {
                 if (pageMap.get(pid).isDirty() != null
                         && pageMap.get(pid).isDirty().equals(tid)) {
                     if (commit) {
-                        pageMap.get(pid).setBeforeImage();
                         flushPage(pid);
                     } else {
                        // pageMap.put(pid, pageMap.get(pid).getBeforeImage());
@@ -300,9 +298,6 @@ public class BufferPool {
         if(pageMap.containsKey(pid)){
             Page page = pageMap.get(pid);
             if(page.isDirty()!=null){
-                Database.getLogFile().logWrite(page.isDirty(), page.getBeforeImage(), page);
-                Database.getLogFile().force();
-
                 DbFile databaseFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
                 databaseFile.writePage(page);
                 pageMap.remove(page.getId());
@@ -337,20 +332,20 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1
 
-        for (PageId pageId : linkByLru) {
-            Page   p   = pageMap.get(pageId);
-            if (p.isDirty() == null) {
-                // dont need to flushpage since all page evicted are not dirty
-                try {
-                    flushPage(pageId);
-                } catch (IOException e) {
-                    e.printStackTrace();
+                for (PageId pageId : linkByLru) {
+                    Page   p   = pageMap.get(pageId);
+                    if (p.isDirty() == null) {
+                        // dont need to flushpage since all page evicted are not dirty
+                        try {
+                            flushPage(pageId);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        discardPage(pageId);
+                        return;
+                    }
                 }
-                discardPage(pageId);
-                return;
+                throw new DbException("BufferPool: evictPage: all pages are marked as dirty");
             }
-        }
-        throw new DbException("BufferPool: evictPage: all pages are marked as dirty");
-    }
 }
 
